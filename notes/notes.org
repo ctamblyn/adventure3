@@ -1,0 +1,174 @@
+#+TITLE: Notes
+#+AUTHOR: Christian Tamblyn
+
+* Game state
+
+** Player location
+   - Can be placed in an arbitrary location (teleport).
+   - Can be moved through a route (n/e/s/w).
+   - Can be queried.
+
+** Inventory
+   - Move item from current location to inventory.
+   - Move item from inventory to current location.
+   - List items in inventory.
+
+** Locations
+   - Have descriptions.
+   - Can contain items.
+   - Are connected to other locations by routes.
+
+** Items
+   - Have unique names.
+   - Have descriptions.
+   - May or may not be carriable.
+     + E.g. =key= is carriable, =sofa= is not.
+   - Can be the direct or indirect object of a =use= command.
+
+** Lockable doors
+    - Appear in two rooms ("from" and "to").
+    - Consist of three entities
+      - The "from" face.
+      - The "to" face.
+      - The parent door entity (anonymous).
+    - "from" and "two" faces have names, descriptions and directions.
+    - Parent entity has locked/unlocked statuse
+    - Parent entity has blocked/unblocked status (if blocked, cannot be
+      unlocked).
+    - If locked, prevent travel in corresponding direction.
+    - Faces can be indirect objects of =use= commands.
+ 
+* Examples
+
+** Door creation example
+   #+BEGIN_SRC c
+   bool create_door(game_state &gs, entity r_from, entity r_to, dir_id dir) {
+     if (!gs.m_is_room(r_from) || !gs.m_is_room(r_to)) {
+       return false;
+     }
+
+     // Create "from" face.
+     const auto from = entity::new_entity();
+     m_name.set(from, dir_id_to_string(dir) + " door");
+     m_description.set(from, "A normal door.");
+     m_direction.set(from, dir);
+     m_location.set(from, r_from);
+    
+     // Create "to" face.
+     const auto to = entity::new_entity();
+     m_name.set(to, dir_id_to_string(reverse(dir)) +  door");
+     m_description.set(to, "A normal door.");
+     m_direction.set(to, reverse(dir));
+     m_location.set(to, r_to);
+    
+     // Create parent.
+     const auto parent = entity::new_entity();
+     m_route_parent.set(from, parent);
+     m_route_parent.set(to, parent);
+     m_is_locked.set(parent);
+
+     return true;
+   }
+   #+END_SRC
+
+** Door unlock example
+   #+BEGIN_SRC c
+   bool unlock_door(game_state &gs, entity face) {
+     const entity parent = gs.m_route_parent.get(face);
+     if (parent == entity::default_entity() ||
+         gs.m_is_blocked.is_set(parent)) {
+       return false;
+     }
+     gs.m_locked.clear(parent);
+     return true;
+   }
+   #+END_SRC
+
+** Check route examples
+   #+BEGIN_SRC c
+   bool is_route_present(game_state &gs, dir_id dir) {
+     return gs.m_location.contains([&](const auto &x) {
+       return (x.second == gs.m_player_location &&
+           gs.m_direction.get(x.first) == dir);
+     });
+   }
+   #+END_SRC
+
+** Take item example
+   #+BEGIN_SRC c
+   bool take_item(game_state &gs, entity item) {
+     if (gs.m_location.get(item) != gs.m_player_location ||
+         !gs.m_is_carriable(item)) {
+       return false;
+     } else {
+       gs.m_location.set(item, gs.m_player_inventory);
+       return true;
+     }
+   }
+   #+END_SRC
+
+* Commands
+
+** DONE =help=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =quit=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =inventory= / =examine inventory=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =look= / =look at room= / =examine room=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =look at <entity>= / =examine <entity>=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =go <direction>= / =<direction>=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =get <item>= / =pick up <item>=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =drop <item>= / =<put down <item>=
+   CLOSED: [2026-05-31 Sun 00:49]
+** DONE =use <entity1> on <entity2>=
+   CLOSED: [2026-05-31 Sun 00:50]
+
+* Random puzzle stuff
+
+  - VASE HOLDS KEY
+    - VASE
+      - Bungled save holds water. (4)
+      - Container for heads of violets, arranged somewhat entertaingly. (4)
+      - Very turbulent sea contains water. (4)
+    - HOLDS
+      - Storage areas for bears. (5)
+      - Clings onto hard, ancient, colourless stone. (5)
+      - Has broken shoulders, but not sure. (5)
+    - KEY
+      - A major docking place for ships, you heard. (3)
+  - INSIDE VASE
+    - Seas Divine
+    - I Evade Sins
+    - I Said Seven
+    - Eve Said Sin
+    - I Envied Ass
+    - I Evade Sins
+    - I Sieve Sand
+    - Dives In Sea
+  - INSIDE SOFA
+    - Ideas Of Sin
+    - A Fiend Is So
+
+* Game design
+
+  You wake up in a clearing in a forest.  It is a late summer evening, and the
+  sun is just beginning to set.  You do not remember who you are, or how you
+  got here.  You have a dull headache.
+
+  You search your pockets to see if you are carrying some kind of ID, but they
+  are empty except for a small scrap of paper.  There is a handwritten note on
+  it, which reads:
+
+  'evening's silent clouds are perfect examples'
+
+  Glancing around, you see two paths leading into the dense trees surrounding
+  you.  One leads east, the other west.
+
+** Background
+
+   
